@@ -33,14 +33,7 @@ def lambda_handler(event, context):
         # logger.info("Is " + s3_object + " is matching ::" + is_new_file_matching_regex)
         if(is_new_file_matching_regex):
             # Split object by '/' and getting first item as cluster name
-            log_stream_name=s3_object.split('/')[0]
-            try:
-                # Create the CloudWatch Logs stream
-                logs_client.create_log_stream(logGroupName=log_group_name, logStreamName=log_stream_name)
-            except ClientError as e:
-            # Define the CloudWatch Logs group and log stream name
-                logger.info(e)
-            
+            log_stream_name=s3_object
             s3_object = s3_client.get_object(Bucket=bucket, Key=s3_object)
             file_content = s3_object['Body'].read()
             write_to_cloudwatch_in_chunks(log_stream_name, file_content)
