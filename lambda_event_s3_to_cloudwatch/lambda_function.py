@@ -20,7 +20,7 @@ log_group_name = os.environ['CWLogGroup']
 
 ITEM_REGEX = r'^.*\/init_scripts\/.*\.log$'
 
-MAX_BATCH_SIZE = 262144 # 256 KB (in bytes)
+MAX_BATCH_SIZE = 260000 # less than 256 KB (in bytes)
 
 def lambda_handler(event, context):
     logger.info(event)
@@ -31,34 +31,46 @@ def lambda_handler(event, context):
     is_new_file_matching_regex= re.match(regex, s3_object)
     # logger.info("Is " + s3_object + " is matching ::" + is_new_file_matching_regex)
     if(is_new_file_matching_regex):
-        logStreamName='log-stream'
+        # Split object by '/' and getting first item as cluster name
+        log_stream_name=s3_object.split('/')[0]
         try:
             # Create the CloudWatch Logs stream
-            logs_client.create_log_stream(logGroupName=log_group_name, logStreamName=logStreamName)
+            logs_client.create_log_stream(logGroupName=log_group_name, logStreamName=log_stream_name)
         except ClientError as e:
         # Define the CloudWatch Logs group and log stream name
             logger.info(e)
            
         s3_object = s3_client.get_object(Bucket=bucket, Key=s3_object)
-        file_content = s3_object['Body'].read().decode('utf-8')
-        log_events = []
+        file_content = s3_object['Body'].read()
+        write_to_cloudwatch_in_chunks(log_stream_name, file_content)
 
-        # Get the log message and split it into chunks
-        for i in range(0, len(file_content), MAX_BATCH_SIZE):
-            log_events.append({
-                'timestamp': int(round(time.time() * 1000)),
-                'message': file_content[i:i+MAX_BATCH_SIZE]
-            })
 
-        #to be removed
-        logger.info(file_content)
-        response = logs_client.put_log_events(
+def write_to_cloudwatch_in_chunks(log_stream_name, log_data):
+    log_data_chunks = [log_data[i:i+MAX_BATCH_SIZE] for i in range(0, len(log_data), MAX_BATCH_SIZE)]
+    
+    try:
+        response = logs_client.create_log_stream(
             logGroupName=log_group_name,
-            logStreamName=logStreamName,
-            logEvents=log_events)
-
-        # Print the response from the put_log_events API call
+            logStreamName=log_stream_name
+        )
+    except logs_client.exceptions.ResourceAlreadyExistsException:
+        pass
+    
+    # Iterating each chunck
+    sequence_token = None
+    for log_data_chunk in log_data_chunks:
+        kwargs = {
+            'logGroupName': log_group_name,
+            'logStreamName': log_stream_name,
+            'logEvents': [
+                {
+                    'timestamp': int(round(time.time() * 1000)),
+                    'message': log_data_chunk.decode('utf-8')
+                },
+            ]
+        }
+        if sequence_token:
+            kwargs['sequenceToken'] = sequence_token
+        response = logs_client.put_log_events(**kwargs)
+        sequence_token = response['nextSequenceToken']
         logger.info(response)
-       
-    else:
-        logger.info('No matching file found.')
