@@ -15,7 +15,14 @@ resource "aws_lambda_function" "lambda_function" {
   runtime       = "python3.9"
   timeout       = 900
   memory_size   = 1024
+  environment {
+    variables = {
+      CWLogGroup = var.destination_cloudwatch_log_group
+    }
+  }
 }
+
+data "aws_caller_identity" "current"{}
 
 
 data "aws_iam_policy_document" "lambda_execution_cw_s3_access"{
