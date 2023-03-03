@@ -91,8 +91,7 @@ resource "aws_cloudwatch_log_group" "cloudwatch-lg-logs-s3-data" {
 
 # S3 Bucket - to create notification event on
 data "aws_s3_bucket" "source_bucket" {
-    # bucket =  "databricks-datalake-log-${lower(var.default_tags["environment"])}"
-    bucket = "ecsdemo1"
+    bucket =  "databricks-datalake-log-${lower(var.default_tags["environment"])}"
 }
 
 
