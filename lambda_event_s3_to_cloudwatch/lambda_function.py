@@ -3,6 +3,7 @@ import boto3
 import json
 import logging
 import time
+import os
 from botocore.exceptions import ClientError
 
 # Set up logging
@@ -15,7 +16,7 @@ logs_client = boto3.client('logs')
 # Initialize the S3 client
 s3_client = boto3.client('s3')
 
-log_group_name = 'S3_cloudwatch_loggroup'
+log_group_name = os.environ['CWLogGroup']
 
 ITEM_REGEX = r'^.*\/init_scripts\/.*\.log$'
 

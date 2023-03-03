@@ -1,4 +1,5 @@
 variable "region" {
+  default = "ap-south-1"
 }
 
 
@@ -18,4 +19,5 @@ variable "destination_cloudwatch_log_group" {
 #--------------------------------------------------------------
 provider "aws" {
   region  = var.region
+  profile = "test"
 }
